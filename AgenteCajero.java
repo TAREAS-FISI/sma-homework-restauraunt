@@ -1,6 +1,7 @@
 import jade.core.Agent;
 import jade.core.AID;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -56,36 +57,45 @@ public class AgenteCajero extends Agent {
 
         @Override
         public void action() {
-            // Recibimos TODO. No usamos templates para no dejar nada "escondido" en la cola de JADE.
-            ACLMessage msg = myAgent.receive();
-
-            if (msg == null) {
-                block(); 
-                return;
-            }
-
-            String contenido = msg.getContent();
-
-            // --- LÓGICA DE ESTADO BLOQUEADO ---
             if (cajaBloqueada) {
-                if (contenido.equals("CAJA_DESBLOQUEADA")) {
-                    System.out.println(">>> CAJA DESBLOQUEADA. Procesando pendientes...");
-                    cajaBloqueada = false;
-                    
-                    // CRÍTICO: Procesar todo lo que acumulamos mientras estábamos bloqueados
-                    procesarPendientes(); 
-                } 
-                else {
-                    // Si no es el desbloqueo, lo guardamos para luego.
-                    // No lo procesamos, pero lo SACAMOS de la cola de JADE para evitar bloqueos.
-                    System.out.println("(Caja Bloqueada) Mensaje guardado en espera: " + contenido);
-                    mensajesPendientes.add(msg);
-                }
-                return; // Terminamos esta vuelta
-            }
+                // --- ESTADO: BLOQUEADO ---
+                // Prioridad 1: Buscar activamente el mensaje de desbloqueo para no perderlo.
+                MessageTemplate unlockTemplate = MessageTemplate.MatchContent("CAJA_DESBLOQUEADA");
+                ACLMessage unlockMsg = receive(unlockTemplate);
 
-            // --- LÓGICA DE ESTADO NORMAL ---
-            procesarMensajeNormal(msg);
+                if (unlockMsg != null) {
+                    // ¡Desbloqueado! Cambiamos de estado y procesamos la lista de pendientes.
+                    cajaBloqueada = false;
+                    System.out.println("Caja desbloqueada. Procesando " + mensajesPendientes.size() + " mensajes pendientes...");
+                    procesarPendientes();
+
+                } else {
+                    // Si no hay mensaje de desbloqueo, revisamos si hay otros mensajes
+                    // y los guardamos en nuestro buffer para despejar la cola de JADE.
+                    ACLMessage otherMsg = receive();
+                    if (otherMsg != null) {
+                        System.out.println("Caja bloqueada. Guardando mensaje '" + otherMsg.getContent() + "' para más tarde.");
+                        mensajesPendientes.add(otherMsg);
+                    } else {
+                        // La cola de JADE está completamente vacía, ahora sí podemos dormir.
+                        block();
+                    }
+                }
+            } else {
+                // --- ESTADO: DESBLOQUEADO ---
+                // Primero, nos aseguramos de que la lista de pendientes esté vacía
+                if (!mensajesPendientes.isEmpty()) {
+                    procesarPendientes();
+                }
+
+                // Luego, procesamos los nuevos mensajes que lleguen.
+                ACLMessage msg = receive();
+                if (msg == null) {
+                    block();
+                    return;
+                }
+                procesarMensajeNormal(msg);
+            }
         }
 
         private void procesarPendientes() {

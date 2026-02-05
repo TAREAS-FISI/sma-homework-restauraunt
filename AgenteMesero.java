@@ -67,7 +67,7 @@ public class AgenteMesero extends Agent {
 
             // -------- RESPUESTA DE COCINA --------
             else if (contenido.startsWith("PLATO_LISTO")) {
-                System.out.println("🍳 Cocina confirmó: " + contenido);
+                System.out.println("Cocina confirmó: " + contenido);
 
                 String[] partes = contenido.split(";");
                 String idPlatillo = partes[1];
