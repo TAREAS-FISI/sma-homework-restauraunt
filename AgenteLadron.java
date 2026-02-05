@@ -18,7 +18,7 @@ public class AgenteLadron extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("😈 Ladrón activo: " + getLocalName());
+        System.out.println("Ladrón activo: " + getLocalName());
 
         addBehaviour(new ComportamientoLadron(this, INTERVALO));
     }
@@ -34,7 +34,7 @@ public class AgenteLadron extends Agent {
         @Override
         protected void onTick() {
             double valor = random.nextDouble();
-            System.out.println("😈 Ladrón evaluando asalto... (" + valor + ")");
+            System.out.println("Ladrón evaluando asalto... (" + valor + ")");
 
             if (valor < PROBABILIDAD_ASALTO) {
                 AID cajero = buscarCajero();
@@ -44,9 +44,9 @@ public class AgenteLadron extends Agent {
                     msg.setContent("ASALTO_EN_CURSO");
                     send(msg);
 
-                    System.out.println("🚨 ASALTO INICIADO");
+                    System.out.println("ASALTO INICIADO");
                 } else {
-                    System.out.println("❌ No se encontró cajero");
+                    System.out.println("No se encontró cajero");
                 }
 
                 // Opcional: detener al ladrón después del asalto

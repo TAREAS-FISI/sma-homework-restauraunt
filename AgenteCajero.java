@@ -1,4 +1,3 @@
-
 import jade.core.Agent;
 import jade.core.AID;
 import jade.lang.acl.ACLMessage;
@@ -12,119 +11,126 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList; // Importante
+import java.util.List;      // Importante
 
 public class AgenteCajero extends Agent {
 
     private Map<Integer, Plato> menu = new HashMap<>();
     private boolean cajaBloqueada = false;
+    // Buffer para guardar mensajes que llegan durante el asalto
+    private List<ACLMessage> mensajesPendientes = new ArrayList<>();
 
     @Override
     protected void setup() {
-        System.out.println("💵 Cajero iniciado: " + getLocalName());
-
+        System.out.println("Cajero iniciado: " + getLocalName());
         registrarServicio();
         cargarMenu();
-
         addBehaviour(new ComportamientoCajero());
     }
 
+    // ... (Métodos registrarServicio y cargarMenu se mantienen IGUAL) ...
     private void registrarServicio() {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
-
         ServiceDescription sd = new ServiceDescription();
         sd.setType("servicio-caja");
         sd.setName("Caja-Restaurante");
-
         dfd.addServices(sd);
-
         try {
             DFService.register(this, dfd);
-            System.out.println("✅ Cajero registrado en DF");
-        } catch (FIPAException e) {
-            e.printStackTrace();
-        }
+        } catch (FIPAException e) { e.printStackTrace(); }
     }
 
     private void cargarMenu() {
         try (BufferedReader br = new BufferedReader(new FileReader("menu.txt"))) {
-            String linea;
-            br.readLine(); // saltar encabezado
-
+            String linea; br.readLine(); 
             while ((linea = br.readLine()) != null) {
                 String[] partes = linea.split(";");
-                int id = Integer.parseInt(partes[0]);
-                String nombre = partes[1];
-                double precio = Double.parseDouble(partes[2]);
-
-                menu.put(id, new Plato(id, nombre, precio));
+                menu.put(Integer.parseInt(partes[0]), new Plato(Integer.parseInt(partes[0]), partes[1], Double.parseDouble(partes[2])));
             }
-            System.out.println("📖 Menú cargado en caja");
-        } catch (Exception e) {
-            System.out.println("❌ Error leyendo menu.txt");
-            e.printStackTrace();
-        }
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     private class ComportamientoCajero extends CyclicBehaviour {
 
         @Override
         public void action() {
-            ACLMessage msg = receive();
+            // Recibimos TODO. No usamos templates para no dejar nada "escondido" en la cola de JADE.
+            ACLMessage msg = myAgent.receive();
+
             if (msg == null) {
-                block();
+                block(); 
                 return;
             }
 
             String contenido = msg.getContent();
 
-            // -------- ASALTO --------
+            // --- LÓGICA DE ESTADO BLOQUEADO ---
+            if (cajaBloqueada) {
+                if (contenido.equals("CAJA_DESBLOQUEADA")) {
+                    System.out.println(">>> CAJA DESBLOQUEADA. Procesando pendientes...");
+                    cajaBloqueada = false;
+                    
+                    // CRÍTICO: Procesar todo lo que acumulamos mientras estábamos bloqueados
+                    procesarPendientes(); 
+                } 
+                else {
+                    // Si no es el desbloqueo, lo guardamos para luego.
+                    // No lo procesamos, pero lo SACAMOS de la cola de JADE para evitar bloqueos.
+                    System.out.println("(Caja Bloqueada) Mensaje guardado en espera: " + contenido);
+                    mensajesPendientes.add(msg);
+                }
+                return; // Terminamos esta vuelta
+            }
+
+            // --- LÓGICA DE ESTADO NORMAL ---
+            procesarMensajeNormal(msg);
+        }
+
+        private void procesarPendientes() {
+            if (mensajesPendientes.isEmpty()) return;
+
+            System.out.println("Resumiendo " + mensajesPendientes.size() + " operaciones pendientes.");
+            for (ACLMessage msgPendiente : mensajesPendientes) {
+                // Reutilizamos la lógica normal para cada mensaje guardado
+                procesarMensajeNormal(msgPendiente);
+            }
+            mensajesPendientes.clear(); // Limpiamos el buffer
+        }
+
+        private void procesarMensajeNormal(ACLMessage msg) {
+            String contenido = msg.getContent();
+
             if (contenido.equals("ASALTO_EN_CURSO")) {
                 cajaBloqueada = true;
-                System.out.println("🚨 ASALTO DETECTADO - Caja bloqueada");
-
+                System.out.println("!!! ASALTO - Bloqueando caja y guardando estado !!!");
                 ACLMessage alerta = new ACLMessage(ACLMessage.INFORM);
-                alerta.addReceiver(buscarMesero());
-                alerta.setContent("EMERGENCIA_ASALTO");
-                send(alerta);
-
-                block(); // 🔑 CLAVE
-                return;
-            }
-
-            // -------- DESBLOQUEO --------
-            else if (contenido.equals("CAJA_DESBLOQUEADA")) {
-                cajaBloqueada = false;
-                System.out.println("✅ Caja desbloqueada. Operaciones normales");
-                return; // aquí sí está bien, no bloquea
-            }
-
-            // -------- INTENTO DE COBRO --------
-            if (cajaBloqueada) {
-                System.out.println("⛔ Caja bloqueada, esperando desbloqueo...");
-                block(); // 🔑 CLAVE
-                return;
-            }
-
-            // Cobro normal
-            if (contenido.startsWith("COBRAR_ID=")) {
-                int id = Integer.parseInt(contenido.split("=")[1]);
-                System.out.println("📩 Caja recibió cobro ID: " + id);
-
-                if (menu.containsKey(id)) {
-                    Plato plato = menu.get(id);
-
-                    ACLMessage boleta = new ACLMessage(ACLMessage.INFORM);
-                    boleta.addReceiver(msg.getSender()); // Mesero
-                    boleta.setContent(
-                            "BOLETA;" + plato.id + ";" +
-                                    plato.nombre + ";" +
-                                    plato.precio);
-                    send(boleta);
-
-                    System.out.println("🧾 Boleta emitida: " + plato.nombre +
-                            " S/." + plato.precio);
+                AID mesero = buscarMesero();
+                if (mesero != null) {
+                    alerta.addReceiver(mesero);
+                    alerta.setContent("EMERGENCIA_ASALTO");
+                    send(alerta);
                 }
+
+            } else if (contenido.startsWith("COBRAR_ID=")) {
+                try {
+                    int id = Integer.parseInt(contenido.split("=")[1]);
+                    System.out.println("Procesando cobro: " + id);
+                    if (menu.containsKey(id)) {
+                        Plato p = menu.get(id);
+                        ACLMessage reply = new ACLMessage(ACLMessage.INFORM);
+                        reply.addReceiver(msg.getSender());
+                        reply.setContent("BOLETA;" + p.id + ";" + p.nombre + ";" + p.precio);
+                        send(reply);
+                        System.out.println("-> Boleta enviada a " + msg.getSender().getLocalName());
+                    }
+                } catch (Exception e) { e.printStackTrace(); }
+
+            } else if (contenido.equals("CAJA_DESBLOQUEADA")) {
+                System.out.println("Info: La caja ya estaba desbloqueada.");
+            } else {
+                System.out.println("Mensaje ignorado: " + contenido);
             }
         }
     }
@@ -134,28 +140,17 @@ public class AgenteCajero extends Agent {
         ServiceDescription sd = new ServiceDescription();
         sd.setType("servicio-mesero");
         template.addServices(sd);
-
         try {
             DFAgentDescription[] result = DFService.search(this, template);
-            if (result.length > 0) {
-                return result[0].getName();
-            }
-        } catch (FIPAException e) {
-            e.printStackTrace();
-        }
+            if (result.length > 0) return result[0].getName();
+        } catch (FIPAException e) { }
         return null;
     }
 
-    // Clase interna Plato
     private static class Plato {
-        int id;
-        String nombre;
-        double precio;
-
+        int id; String nombre; double precio;
         Plato(int id, String nombre, double precio) {
-            this.id = id;
-            this.nombre = nombre;
-            this.precio = precio;
+            this.id = id; this.nombre = nombre; this.precio = precio;
         }
     }
 }

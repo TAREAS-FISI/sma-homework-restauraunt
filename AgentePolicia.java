@@ -13,7 +13,7 @@ public class AgentePolicia extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("👮 Policía activo: " + getLocalName());
+        System.out.println("Policía activo: " + getLocalName());
 
         registrarServicio();
         addBehaviour(new ComportamientoPolicia());
@@ -32,7 +32,7 @@ public class AgentePolicia extends Agent {
 
         try {
             DFService.register(this, dfd);
-            System.out.println("✅ Policía registrado en DF");
+            System.out.println("Policía registrado en DF");
         } catch (FIPAException e) {
             e.printStackTrace();
         }
@@ -50,8 +50,8 @@ public class AgentePolicia extends Agent {
             }
 
             if (msg.getContent().equals("INTERVENCION_ASALTO")) {
-                System.out.println("🚓 Intervención solicitada");
-                System.out.println("🚨 Policía en camino...");
+                System.out.println("Intervención solicitada");
+                System.out.println("Policía en camino...");
 
                 final ACLMessage alertaMsg = msg;
 
@@ -63,7 +63,7 @@ public class AgentePolicia extends Agent {
                         respuesta.addReceiver(alertaMsg.getSender());
                         respuesta.setContent("LADRON_ARRESTADO");
                         send(respuesta);
-                        System.out.println("👮‍♂️ LADRÓN ARRESTADO - Zona segura");
+                        System.out.println("El POLICIA ha llegado y le ha sacado su mierda al LADRÓN y ahora está ARRESTADO - EL PINGAZO LARGO DE LA LEY");
                     }
                 });
             }

@@ -20,7 +20,7 @@ public class AgenteCocinero extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("🍳 Cocinero iniciado: " + getLocalName());
+        System.out.println("Cocinero iniciado: " + getLocalName());
 
         registrarServicio();
         cargarMenu();
@@ -40,7 +40,7 @@ public class AgenteCocinero extends Agent {
 
         try {
             DFService.register(this, dfd);
-            System.out.println("✅ Cocinero registrado en DF");
+            System.out.println("Cocinero registrado en DF");
         } catch (FIPAException e) {
             e.printStackTrace();
         }
@@ -60,9 +60,9 @@ public class AgenteCocinero extends Agent {
 
                 menu.put(id, new Plato(id, nombre, precio, tiempo));
             }
-            System.out.println("📖 Menú cargado en cocina");
+            System.out.println("Menú cargado en cocina");
         } catch (Exception e) {
-            System.out.println("❌ Error leyendo menu.txt");
+            System.out.println("Error leyendo menu.txt");
             e.printStackTrace();
         }
     }
@@ -78,13 +78,13 @@ public class AgenteCocinero extends Agent {
 
                 if (contenido.startsWith("PEDIDO_ID=")) {
                     int idPedido = Integer.parseInt(contenido.split("=")[1]);
-                    System.out.println("📩 Cocina recibió pedido ID: " + idPedido);
+                    System.out.println("Cocina recibió pedido ID: " + idPedido);
 
                     if (menu.containsKey(idPedido)) {
                         final Plato plato = menu.get(idPedido);
                         final ACLMessage pedidoMsg = msg;
 
-                        System.out.println("👨‍🍳 Preparando: " + plato.nombre + " (" + plato.tiempoPreparacion + "s)");
+                        System.out.println("Preparando: " + plato.nombre + " (" + plato.tiempoPreparacion + "s)");
 
                         // Usar WakerBehaviour para simular el tiempo de cocción sin bloquear al agente
                         addBehaviour(new WakerBehaviour(myAgent, plato.tiempoPreparacion * 1000L) {
@@ -94,7 +94,7 @@ public class AgenteCocinero extends Agent {
                                 respuesta.addReceiver(pedidoMsg.getSender());
                                 respuesta.setContent("PLATO_LISTO;" + plato.id + ";" + plato.nombre);
                                 send(respuesta);
-                                System.out.println("✅ Plato listo: " + plato.nombre);
+                                System.out.println("Plato listo: " + plato.nombre);
                             }
                         });
 
@@ -104,7 +104,7 @@ public class AgenteCocinero extends Agent {
                         respuesta.setContent("PLATO_NO_DISPONIBLE;" + idPedido);
                         send(respuesta);
 
-                        System.out.println("❌ Plato no disponible");
+                        System.out.println("Plato no disponible");
                     }
                 }
             } else {

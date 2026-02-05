@@ -14,7 +14,7 @@ public class AgenteMesero extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("🧑‍🍽️ Mesero iniciado: " + getLocalName());
+        System.out.println("Mesero iniciado: " + getLocalName());
 
         registrarServicio();
         addBehaviour(new ComportamientoMesero());
@@ -33,7 +33,7 @@ public class AgenteMesero extends Agent {
 
         try {
             DFService.register(this, dfd);
-            System.out.println("✅ Mesero registrado en DF");
+            System.out.println("Mesero registrado en DF");
         } catch (FIPAException e) {
             e.printStackTrace();
         }
@@ -55,13 +55,13 @@ public class AgenteMesero extends Agent {
             // -------- PEDIDO DEL CLIENTE --------
             if (contenido.startsWith("PEDIDO_ID=")) {
                 clienteActual = msg.getSender();
-                System.out.println("📩 Pedido recibido del cliente: " + contenido);
+                System.out.println("Pedido recibido del cliente: " + contenido);
 
                 AID cocinero = buscarAgente("servicio-cocina");
                 if (cocinero != null) {
                     reenviarPedido(cocinero, contenido);
                 } else {
-                    informarCliente("❌ No hay cocinero disponible");
+                    informarCliente("No hay cocinero disponible");
                 }
             }
 
@@ -74,32 +74,32 @@ public class AgenteMesero extends Agent {
                 String nombrePlatillo = partes[2];
 
                 // PASO 1: Informar al cliente que su comida está servida.
-                informarCliente("✅ Aquí tiene su plato: " + nombrePlatillo);
-                System.out.println("🍽️  Plato servido al cliente.");
+                informarCliente("Aquí tiene su plato: " + nombrePlatillo);
+                System.out.println("Plato servido al cliente.");
 
                 // PASO 2: Ahora, pedir la cuenta a caja.
                 AID cajero = buscarAgente("servicio-caja");
                 if (cajero != null) {
                     enviarACaja(cajero, idPlatillo);
                 } else {
-                    informarCliente("❌ No hay cajero disponible para generar su cuenta.");
+                    informarCliente("No hay cajero disponible para generar su cuenta.");
                 }
             }
 
             else if (contenido.startsWith("PLATO_NO_DISPONIBLE")) {
-                System.out.println("⚠️ Cocina rechazó el pedido");
-                informarCliente("⚠️ Plato no disponible");
+                System.out.println("Cocina rechazó el pedido");
+                informarCliente("Plato no disponible");
             }
 
             // -------- BOLETA DESDE CAJA --------
             else if (contenido.startsWith("BOLETA")) {
-                System.out.println("🧾 Boleta recibida desde caja");
+                System.out.println("Boleta recibida desde caja");
                 reenviarBoletaAlCliente(contenido);
             }
 
             // -------- EMERGENCIA --------
             else if (contenido.equals("EMERGENCIA_ASALTO")) {
-                System.out.println("🚨 EMERGENCIA DE ASALTO");
+                System.out.println("EMERGENCIA DE ASALTO");
 
                 AID policia = buscarAgente("servicio-policia");
                 if (policia != null) {
@@ -108,14 +108,14 @@ public class AgenteMesero extends Agent {
                     alerta.setContent("INTERVENCION_ASALTO");
                     send(alerta);
 
-                    System.out.println("👮 Policía solicitada");
+                    System.out.println("Policía solicitada");
                 } else {
-                    System.out.println("❌ No se encontró policía");
+                    System.out.println("No se encontró policía");
                 }
             }
 
             else if (msg.getContent().equals("LADRON_ARRESTADO")) {
-                System.out.println("🟢 Policía confirmó arresto");
+                System.out.println("Policía confirmó arresto");
 
                 ACLMessage avisoCajero = new ACLMessage(ACLMessage.INFORM);
                 avisoCajero.setContent("CAJA_DESBLOQUEADA");
@@ -123,7 +123,7 @@ public class AgenteMesero extends Agent {
 
                 send(avisoCajero);
 
-                System.out.println("💰 Caja habilitada nuevamente");
+                System.out.println("Caja habilitada nuevamente");
             }
         }
     }
@@ -151,7 +151,7 @@ public class AgenteMesero extends Agent {
         msg.addReceiver(cocinero);
         msg.setContent(pedido);
         send(msg);
-        System.out.println("📤 Pedido enviado a cocina");
+        System.out.println("Pedido enviado a cocina");
     }
 
     private void enviarACaja(AID cajero, String idPlatillo) {
@@ -159,7 +159,7 @@ public class AgenteMesero extends Agent {
         msg.addReceiver(cajero);
         msg.setContent("COBRAR_ID=" + idPlatillo);
         send(msg);
-        System.out.println("💵 Pedido enviado a caja");
+        System.out.println("Pedido enviado a caja");
     }
 
     private void reenviarBoletaAlCliente(String boleta) {
@@ -167,8 +167,9 @@ public class AgenteMesero extends Agent {
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
             msg.addReceiver(clienteActual);
             msg.setContent(boleta);
+            msg.setConversationId("recibir-boleta"); // CLAVE: Añadir ID de conversación
             send(msg);
-            System.out.println("📨 Boleta enviada al cliente");
+            System.out.println("Boleta enviada al cliente");
         }
     }
 
@@ -177,6 +178,7 @@ public class AgenteMesero extends Agent {
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
             msg.addReceiver(clienteActual);
             msg.setContent(mensaje);
+            msg.setConversationId("pedido-comida"); // CLAVE: Añadir ID de conversación
             send(msg);
         }
     }
