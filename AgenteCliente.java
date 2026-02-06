@@ -39,7 +39,7 @@ public class AgenteCliente extends Agent {
         public void action() {
             switch (state) {
                 case STATE_BUSCANDO_MESERO:
-                    System.out.println(getLocalName() + " buscará mesero...");
+                    System.out.println(getAID() + getName() + " buscará mesero...");
                     block(TIEMPO_BUSQUEDA_MESERO_MS);
                     state = STATE_INICIAR_NUEVO_PEDIDO;
                     break;
@@ -48,7 +48,7 @@ public class AgenteCliente extends Agent {
                     // ... (Esta parte estaba bien, la dejo resumida) ...
                     AID mesero = buscarMesero();
                     if (mesero != null) {
-                        int pedidoId = new Random().nextInt(5) + 1; // Ajustado rango para pruebas
+                        int pedidoId = new Random().nextInt(12) + 1; // Ajustado rango para pruebas
                         ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
                         msg.addReceiver(mesero);
                         msg.setContent("PEDIDO_ID=" + pedidoId);
@@ -56,7 +56,8 @@ public class AgenteCliente extends Agent {
                         send(msg);
                         System.out.println(getLocalName() + " pidió plato ID: " + pedidoId);
                         
-                        // Preparar templates
+                        // Preparar 
+                        
                         templateComida = MessageTemplate.and(
                             MessageTemplate.MatchPerformative(ACLMessage.INFORM),
                             MessageTemplate.MatchConversationId("pedido-comida")

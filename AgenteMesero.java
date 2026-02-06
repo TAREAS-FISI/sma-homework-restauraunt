@@ -119,7 +119,7 @@ public class AgenteMesero extends Agent {
 
                 ACLMessage avisoCajero = new ACLMessage(ACLMessage.INFORM);
                 avisoCajero.setContent("CAJA_DESBLOQUEADA");
-                avisoCajero.addReceiver(buscarAgente("servicio-cajero"));
+                avisoCajero.addReceiver(buscarAgente("servicio-caja"));
 
                 send(avisoCajero);
 

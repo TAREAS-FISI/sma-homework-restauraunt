@@ -14,7 +14,7 @@ import java.util.Random;
 public class AgenteLadron extends Agent {
 
     private static final double PROBABILIDAD_ASALTO = 0.7;
-    private static final int INTERVALO = 8000; // ms
+    private static final int INTERVALO = 10000; // ms
 
     @Override
     protected void setup() {
@@ -36,7 +36,7 @@ public class AgenteLadron extends Agent {
             double valor = random.nextDouble();
             System.out.println("Ladrón evaluando asalto... (" + valor + ")");
 
-            if (valor < PROBABILIDAD_ASALTO) {
+            if (valor > PROBABILIDAD_ASALTO) {
                 AID cajero = buscarCajero();
                 if (cajero != null) {
                     ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
@@ -48,9 +48,6 @@ public class AgenteLadron extends Agent {
                 } else {
                     System.out.println("No se encontró cajero");
                 }
-
-                // Opcional: detener al ladrón después del asalto
-                stop();
             }
         }
     }

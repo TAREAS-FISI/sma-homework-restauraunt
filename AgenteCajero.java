@@ -6,20 +6,19 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
-import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.TickerBehaviour; // Cambio a TickerBehaviour
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList; // Importante
-import java.util.List;      // Importante
+import java.util.ArrayList;
+import java.util.List;
 
 public class AgenteCajero extends Agent {
 
     private Map<Integer, Plato> menu = new HashMap<>();
     private boolean cajaBloqueada = false;
-    // Buffer para guardar mensajes que llegan durante el asalto
     private List<ACLMessage> mensajesPendientes = new ArrayList<>();
 
     @Override
@@ -27,10 +26,10 @@ public class AgenteCajero extends Agent {
         System.out.println("Cajero iniciado: " + getLocalName());
         registrarServicio();
         cargarMenu();
-        addBehaviour(new ComportamientoCajero());
+        // Se añade un TickerBehaviour que se ejecuta cada 750 ms
+        addBehaviour(new ComportamientoCajero(this, 750));
     }
 
-    // ... (Métodos registrarServicio y cargarMenu se mantienen IGUAL) ...
     private void registrarServicio() {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
@@ -53,65 +52,57 @@ public class AgenteCajero extends Agent {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    private class ComportamientoCajero extends CyclicBehaviour {
+    private class ComportamientoCajero extends TickerBehaviour {
+
+        public ComportamientoCajero(Agent a, long period) {
+            super(a, period);
+        }
 
         @Override
-        public void action() {
+        protected void onTick() {
             if (cajaBloqueada) {
                 // --- ESTADO: BLOQUEADO ---
-                // Prioridad 1: Buscar activamente el mensaje de desbloqueo para no perderlo.
                 MessageTemplate unlockTemplate = MessageTemplate.MatchContent("CAJA_DESBLOQUEADA");
-                ACLMessage unlockMsg = receive(unlockTemplate);
+                ACLMessage unlockMsg = myAgent.receive(unlockTemplate);
 
                 if (unlockMsg != null) {
-                    // ¡Desbloqueado! Cambiamos de estado y procesamos la lista de pendientes.
                     cajaBloqueada = false;
                     System.out.println("Caja desbloqueada. Procesando " + mensajesPendientes.size() + " mensajes pendientes...");
                     procesarPendientes();
-
                 } else {
-                    // Si no hay mensaje de desbloqueo, revisamos si hay otros mensajes
-                    // y los guardamos en nuestro buffer para despejar la cola de JADE.
-                    ACLMessage otherMsg = receive();
+                    ACLMessage otherMsg = myAgent.receive();
                     if (otherMsg != null) {
                         System.out.println("Caja bloqueada. Guardando mensaje '" + otherMsg.getContent() + "' para más tarde.");
                         mensajesPendientes.add(otherMsg);
-                    } else {
-                        // La cola de JADE está completamente vacía, ahora sí podemos dormir.
-                        block();
                     }
+                    // No hay block(), el Ticker nos despertará de nuevo.
                 }
             } else {
                 // --- ESTADO: DESBLOQUEADO ---
-                // Primero, nos aseguramos de que la lista de pendientes esté vacía
                 if (!mensajesPendientes.isEmpty()) {
                     procesarPendientes();
                 }
 
-                // Luego, procesamos los nuevos mensajes que lleguen.
-                ACLMessage msg = receive();
-                if (msg == null) {
-                    block();
-                    return;
+                ACLMessage msg = myAgent.receive();
+                if (msg != null) {
+                    procesarMensajeNormal(msg);
                 }
-                procesarMensajeNormal(msg);
+                // No hay block(), el Ticker nos despertará de nuevo.
             }
         }
 
         private void procesarPendientes() {
             if (mensajesPendientes.isEmpty()) return;
-
             System.out.println("Resumiendo " + mensajesPendientes.size() + " operaciones pendientes.");
-            for (ACLMessage msgPendiente : mensajesPendientes) {
-                // Reutilizamos la lógica normal para cada mensaje guardado
-                procesarMensajeNormal(msgPendiente);
+            java.util.Iterator<ACLMessage> it = mensajesPendientes.iterator();
+            while(it.hasNext()){
+                procesarMensajeNormal(it.next());
+                it.remove();
             }
-            mensajesPendientes.clear(); // Limpiamos el buffer
         }
 
         private void procesarMensajeNormal(ACLMessage msg) {
             String contenido = msg.getContent();
-
             if (contenido.equals("ASALTO_EN_CURSO")) {
                 cajaBloqueada = true;
                 System.out.println("!!! ASALTO - Bloqueando caja y guardando estado !!!");
@@ -122,7 +113,6 @@ public class AgenteCajero extends Agent {
                     alerta.setContent("EMERGENCIA_ASALTO");
                     send(alerta);
                 }
-
             } else if (contenido.startsWith("COBRAR_ID=")) {
                 try {
                     int id = Integer.parseInt(contenido.split("=")[1]);
@@ -136,8 +126,8 @@ public class AgenteCajero extends Agent {
                         System.out.println("-> Boleta enviada a " + msg.getSender().getLocalName());
                     }
                 } catch (Exception e) { e.printStackTrace(); }
-
             } else if (contenido.equals("CAJA_DESBLOQUEADA")) {
+                cajaBloqueada = false;
                 System.out.println("Info: La caja ya estaba desbloqueada.");
             } else {
                 System.out.println("Mensaje ignorado: " + contenido);
