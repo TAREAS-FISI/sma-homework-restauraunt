@@ -14,7 +14,7 @@ import java.util.Random;
 public class AgenteLadron extends Agent {
 
     private static final double PROBABILIDAD_ASALTO = 0.7;
-    private static final int INTERVALO = 10000; // ms
+    private static final int INTERVALO = 10000; 
 
     @Override
     protected void setup() {

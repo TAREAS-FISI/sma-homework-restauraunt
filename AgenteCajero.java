@@ -6,7 +6,7 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
-import jade.core.behaviours.TickerBehaviour; // Cambio a TickerBehaviour
+import jade.core.behaviours.TickerBehaviour;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -23,11 +23,22 @@ public class AgenteCajero extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("Cajero iniciado: " + getLocalName());
+        printAnimated("Cajero iniciado: " + getLocalName());
         registrarServicio();
         cargarMenu();
-        // Se añade un TickerBehaviour que se ejecuta cada 750 ms
         addBehaviour(new ComportamientoCajero(this, 750));
+    }
+
+    private void printAnimated(String mensaje) {
+        System.out.print("[Cajero] >> " + mensaje);
+        System.out.println();
+    }
+
+    private void printAlert(String mensaje) {
+        String linea = new String(new char[mensaje.length() + 4]).replace('\0', '-');
+        System.out.println("\n" + linea);
+        System.out.print("| " + mensaje + " |");
+        System.out.println("\n" + linea + "\n");
     }
 
     private void registrarServicio() {
@@ -67,15 +78,14 @@ public class AgenteCajero extends Agent {
 
                 if (unlockMsg != null) {
                     cajaBloqueada = false;
-                    System.out.println("Caja desbloqueada. Procesando " + mensajesPendientes.size() + " mensajes pendientes...");
+                    printAnimated("Caja desbloqueada. Procesando " + mensajesPendientes.size() + " mensajes pendientes...");
                     procesarPendientes();
                 } else {
                     ACLMessage otherMsg = myAgent.receive();
                     if (otherMsg != null) {
-                        System.out.println("Caja bloqueada. Guardando mensaje '" + otherMsg.getContent() + "' para más tarde.");
+                        printAnimated("Caja bloqueada. Guardando mensaje '" + otherMsg.getContent() + "' para más tarde.");
                         mensajesPendientes.add(otherMsg);
                     }
-                    // No hay block(), el Ticker nos despertará de nuevo.
                 }
             } else {
                 // --- ESTADO: DESBLOQUEADO ---
@@ -87,13 +97,12 @@ public class AgenteCajero extends Agent {
                 if (msg != null) {
                     procesarMensajeNormal(msg);
                 }
-                // No hay block(), el Ticker nos despertará de nuevo.
             }
         }
 
         private void procesarPendientes() {
             if (mensajesPendientes.isEmpty()) return;
-            System.out.println("Resumiendo " + mensajesPendientes.size() + " operaciones pendientes.");
+            printAnimated("Resumiendo " + mensajesPendientes.size() + " operaciones pendientes.");
             java.util.Iterator<ACLMessage> it = mensajesPendientes.iterator();
             while(it.hasNext()){
                 procesarMensajeNormal(it.next());
@@ -105,7 +114,7 @@ public class AgenteCajero extends Agent {
             String contenido = msg.getContent();
             if (contenido.equals("ASALTO_EN_CURSO")) {
                 cajaBloqueada = true;
-                System.out.println("!!! ASALTO - Bloqueando caja y guardando estado !!!");
+                printAlert("!!! ASALTO - Bloqueando caja y guardando estado !!!");
                 ACLMessage alerta = new ACLMessage(ACLMessage.INFORM);
                 AID mesero = buscarMesero();
                 if (mesero != null) {
@@ -116,21 +125,21 @@ public class AgenteCajero extends Agent {
             } else if (contenido.startsWith("COBRAR_ID=")) {
                 try {
                     int id = Integer.parseInt(contenido.split("=")[1]);
-                    System.out.println("Procesando cobro: " + id);
+                    printAnimated("Procesando cobro: " + id);
                     if (menu.containsKey(id)) {
                         Plato p = menu.get(id);
                         ACLMessage reply = new ACLMessage(ACLMessage.INFORM);
                         reply.addReceiver(msg.getSender());
                         reply.setContent("BOLETA;" + p.id + ";" + p.nombre + ";" + p.precio);
                         send(reply);
-                        System.out.println("-> Boleta enviada a " + msg.getSender().getLocalName());
+                        printAnimated("Boleta enviada a " + msg.getSender().getLocalName());
                     }
                 } catch (Exception e) { e.printStackTrace(); }
             } else if (contenido.equals("CAJA_DESBLOQUEADA")) {
                 cajaBloqueada = false;
-                System.out.println("Info: La caja ya estaba desbloqueada.");
+                printAnimated("Info: La caja ya estaba desbloqueada.");
             } else {
-                System.out.println("Mensaje ignorado: " + contenido);
+                printAnimated("Mensaje ignorado: " + contenido);
             }
         }
     }

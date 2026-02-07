@@ -19,7 +19,6 @@ public class AgentePolicia extends Agent {
         addBehaviour(new ComportamientoPolicia());
     }
 
-    // ================= REGISTRO DF =================
     private void registrarServicio() {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
@@ -38,7 +37,6 @@ public class AgentePolicia extends Agent {
         }
     }
 
-    // ================= COMPORTAMIENTO =================
     private class ComportamientoPolicia extends CyclicBehaviour {
 
         @Override
@@ -55,7 +53,6 @@ public class AgentePolicia extends Agent {
 
                 final ACLMessage alertaMsg = msg;
 
-                // Usar WakerBehaviour para simular el tiempo de llegada sin bloquear al agente
                 addBehaviour(new WakerBehaviour(myAgent, 5000) {
                     @Override
                     protected void onWake() {

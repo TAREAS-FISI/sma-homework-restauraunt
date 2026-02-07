@@ -17,8 +17,20 @@ public class AgenteCliente extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("Cliente listo: " + getLocalName());
+        printAnimated("Cliente listo: " + getLocalName());
         addBehaviour(new ComportamientoCiclicoCliente());
+    }
+
+    private void printAnimated(String mensaje) {
+        System.out.print("[Cliente] >> " + mensaje);
+        System.out.println();
+    }
+
+    private void printAlert(String mensaje) {
+        String linea = new String(new char[mensaje.length() + 4]).replace('\0', '-');
+        System.out.println("\n" + linea);
+        System.out.print("| " + mensaje + " |");
+        System.out.println("\n" + linea + "\n");
     }
 
     private class ComportamientoCiclicoCliente extends CyclicBehaviour {
@@ -39,39 +51,36 @@ public class AgenteCliente extends Agent {
         public void action() {
             switch (state) {
                 case STATE_BUSCANDO_MESERO:
-                    System.out.println(getAID() + getName() + " buscará mesero...");
+                    printAnimated(getAID().getLocalName() + " buscará mesero...");
                     block(TIEMPO_BUSQUEDA_MESERO_MS);
                     state = STATE_INICIAR_NUEVO_PEDIDO;
                     break;
 
                 case STATE_INICIAR_NUEVO_PEDIDO:
-                    // ... (Esta parte estaba bien, la dejo resumida) ...
                     AID mesero = buscarMesero();
                     if (mesero != null) {
-                        int pedidoId = new Random().nextInt(12) + 1; // Ajustado rango para pruebas
+                        int pedidoId = new Random().nextInt(12) + 1;
                         ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
                         msg.addReceiver(mesero);
                         msg.setContent("PEDIDO_ID=" + pedidoId);
                         msg.setConversationId("pedido-comida");
                         send(msg);
-                        System.out.println(getLocalName() + " pidió plato ID: " + pedidoId);
-                        
-                        // Preparar 
-                        
+                        printAnimated("Pidió plato ID: " + pedidoId);
+                                                
                         templateComida = MessageTemplate.and(
                             MessageTemplate.MatchPerformative(ACLMessage.INFORM),
                             MessageTemplate.MatchConversationId("pedido-comida")
                         );
                         state = STATE_ESPERAR_COMIDA;
                     } else {
-                        block(2000); // Esperar antes de reintentar
+                        block(2000);
                     }
                     break;
 
                 case STATE_ESPERAR_COMIDA:
                     ACLMessage msgComida = myAgent.receive(templateComida);
                     if (msgComida != null) {
-                        System.out.println(getLocalName() + " -> Comida recibida.");
+                        printAnimated("Comida recibida.");
                         state = STATE_COMER;
                     } else {
                         block();
@@ -79,50 +88,39 @@ public class AgenteCliente extends Agent {
                     break;
 
                 case STATE_COMER:
-                    System.out.println(getLocalName() + " está comiendo (Ñam ñam)...");
+                    printAnimated("Está comiendo (Ñam ñam)...");
                     timerStart = System.currentTimeMillis();
                     
-                    // Configuramos el template de la boleta AQUÍ para estar listos
                     templateBoleta = MessageTemplate.and(
                         MessageTemplate.MatchPerformative(ACLMessage.INFORM),
                         MessageTemplate.MatchConversationId("recibir-boleta")
                     );
                     
                     state = STATE_ESPERAR_BOLETA;
-                    // No hacemos block aquí, dejamos que el flujo caiga al siguiente estado
-                    // o que el ciclo de JADE lo maneje.
                     break;
 
                 case STATE_ESPERAR_BOLETA:
-                    // 1. Calcular cuánto tiempo ha pasado
                     long tiempoPasado = System.currentTimeMillis() - timerStart;
                     long tiempoRestante = TIEMPO_COMER_MS - tiempoPasado;
 
                     if (tiempoRestante > 0) {
-                        // Aún no terminamos de comer.
-                        // Bloqueamos SOLO por el tiempo restante.
-                        // Si llega un mensaje, despertaremos, veremos que falta tiempo
-                        // y volveremos a dormir el resto.
                         block(tiempoRestante);
                         return; 
                     }
 
-                    // 2. Si llegamos aquí, ya terminamos de comer. Buscamos la boleta.
-                    System.out.println(getLocalName() + " terminó de comer. Esperando cuenta...");
+                    printAnimated("Terminó de comer. Esperando cuenta...");
                     
                     ACLMessage msgBoleta = myAgent.receive(templateBoleta);
                     if (msgBoleta != null) {
-                        System.out.println(getLocalName() + " PAGANDO: " + msgBoleta.getContent());
+                        printAlert("PAGANDO: " + msgBoleta.getContent());
                         state = STATE_PAGAR_Y_REINICIAR;
                     } else {
-                        // Si el tiempo pasó pero la boleta aun no llega (raro, pero posible)
-                        // Bloqueamos indefinidamente hasta que llegue.
                         block();
                     }
                     break;
 
                 case STATE_PAGAR_Y_REINICIAR:
-                    System.out.println(getLocalName() + " se va contento. Volverá pronto.");
+                    printAnimated("Se va contento. Volverá pronto.");
                     block(TIEMPO_ESPERA_REORDENAR_MS);
                     state = STATE_INICIAR_NUEVO_PEDIDO;
                     break;
@@ -130,7 +128,6 @@ public class AgenteCliente extends Agent {
         }
     }
 
-    // ... (El método buscarMesero se mantiene igual) ...
     private AID buscarMesero() {
         DFAgentDescription template = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
