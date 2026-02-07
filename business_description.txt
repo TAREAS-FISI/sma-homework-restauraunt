@@ -1,0 +1,10 @@
+Al revisar el código, te darás cuenta que poseemos varios agentes.
+
+- Agente Cliente: Agente encargado de ingresar al local, pedir un platillo aleatorio del menú, comer y comunicarse constantemente con el mesero.
+- Agente Mesero: Agente encargado de atender al cliente, comunicar el pedido al agente cocinero y al agente cajero; como también alerta al cajero sobre algún robo.
+- Agente Cocinero: Agente encargado de preparar el pedido y comunicarse con el agente mesero una vez esté listo.
+- Agente Cajero: Agente encargado de realizar el cobro del pedido y bloquear la caja en caso ocurra un robo. Se comunica constantemente con el mesero
+- Agente Ladrón: Agente "externo" que posee una posibilidad aleatoria de realizar un robo (evalúa).
+- Agente Policia: Agente "externo" que captura al ladrón sí o sí.
+
+Revisa el código :b
