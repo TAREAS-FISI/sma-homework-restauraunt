@@ -60,7 +60,7 @@ public class AgentePolicia extends Agent {
                         respuesta.addReceiver(alertaMsg.getSender());
                         respuesta.setContent("LADRON_ARRESTADO");
                         send(respuesta);
-                        System.out.println("El POLICIA ha llegado y le ha sacado su mierda al LADRÓN y ahora está ARRESTADO - EL PINGAZO LARGO DE LA LEY");
+                        System.out.println("El POLICIA ha llegado y le ha sometido al LADRÓN y ahora está ARRESTADO - EL BRAZO LARGO DE LA LEY");
                     }
                 });
             }
